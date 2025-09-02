@@ -1,0 +1,53 @@
+# Dockerfile for Smart-Inventory & Dispatch Manager (FastAPI + Motor)
+# Multi-stage is optional; here we keep it simple and small using python:3.12-slim
+FROM python:3.12-slim AS base
+
+# Prevent Python from writing .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    TZ=UTC
+
+# Install system dependencies required to build some Python packages and for runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       gcc \
+       libssl-dev \
+       libffi-dev \
+       curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user (non-root) for security
+RUN useradd --create-home --shell /bin/bash appuser
+
+WORKDIR /app
+
+# Copy requirements first (for Docker layer caching)
+# Make sure you have a requirements.txt at repo root
+COPY requirements.txt /app/
+
+# Install python deps
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy project
+COPY . /app
+
+# Fix permissions for non-root user
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Expose port your FastAPI app uses
+EXPOSE 8000
+
+# Healthcheck (makes sure uvicorn responds)
+# It requires curl which we installed above; TTLs are conservative.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://127.0.0.1:8000/health || curl -f http://127.0.0.1:8000/docs || exit 1
+
+# Default command (production: remove --reload)
+# If you want production concurrency, replace with: 
+# CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "main:app", "--bind", "0.0.0.0:8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

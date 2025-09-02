@@ -1,0 +1,687 @@
+{
+	"info": {
+		"_postman_id": "712e4656-5f9b-464d-bd10-ba8decde08e5",
+		"name": "smart-inventory",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38062651"
+	},
+	"item": [
+		{
+			"name": "RegisterHub",
+			"request": {
+				"auth": {
+					"type": "bearer"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hub_id\":\"Hub_003\",\r\n    \"hub_name\" : \"Delhi Hub\",\r\n    \"hub_manager\" : \"Tappas Singh\",\r\n    \"hub_phone_number\":\"8885363309\",\r\n    \"hub_address\":\"1-32-TA23, Delhi Nama Street ,Delhi - 500000\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/hub_mangement/hubs/register",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"hub_mangement",
+						"hubs",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update_Hub",
+			"request": {
+				"auth": {
+					"type": "bearer"
+				},
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n   \r\n    \"hub_phone_number\":\"8885363312\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/hub_mangement/hubs/update/Hub_003",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"hub_mangement",
+						"hubs",
+						"update",
+						"Hub_003"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/hub_mangement/hubs/delete/Hub_001?hub_name=Vijayawada%20Hub&hub_manager=Ravi%20Teja",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"hub_mangement",
+						"hubs",
+						"delete",
+						"Hub_001"
+					],
+					"query": [
+						{
+							"key": "hub_name",
+							"value": "Vijayawada%20Hub"
+						},
+						{
+							"key": "hub_manager",
+							"value": "Ravi%20Teja"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "search",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/hub_mangement/hubs/search?hub_id=Hub_001&skip=0&limit=10\n",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"hub_mangement",
+						"hubs",
+						"search"
+					],
+					"query": [
+						{
+							"key": "hub_id",
+							"value": "Hub_001"
+						},
+						{
+							"key": "skip",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "10\n"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "by_status",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/hub_mangement/hubs/status?status=Active&skip=0&limit=10\n",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"hub_mangement",
+						"hubs",
+						"status"
+					],
+					"query": [
+						{
+							"key": "status",
+							"value": "Active"
+						},
+						{
+							"key": "skip",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "10\n"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Register_Product",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Hub_ID\": \"HUB_003\",\r\n  \"Product_ID\": \"PROD_102\",\r\n  \"Product_Name\": \"A1 Rice Ban Oil\",\r\n  \"Quantity\": 100,\r\n  \"Value\": 4000.0,\r\n  \"Selling_Price\": 195.0,\r\n  \"Category\": \"Cooking Oil\",\r\n  \"Product_Description\": \"1liter oil packets\",\r\n  \"Expiry_Date\": \"2026-01-01\",\r\n  \"Brand\": \"Rice Ban\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/inventory_mangement/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"inventory_mangement",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update_product",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/inventory_mangement/update",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"inventory_mangement",
+						"update"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "dispatch_inventory",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Product_ID\" : \"PROD_101\",\r\n    \"Quantity\" : 50,\r\n    \"From_Hub_ID\" : \"HUB_002\",\r\n    \"To_Hub_ID\" : \"HUB_001\",\r\n    \"Request_Ref\" : \"REQ_001\",\r\n    \"Notes\":\"Urgent dispatch\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/inventory_mangement/inventory/dispatch",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"inventory_mangement",
+						"inventory",
+						"dispatch"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invenotry_batches",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "GET http://localhost:8000/api/inventory_mangement/inventory/batches?product_id=PROD_101&hub_id=HUB_002&status=active&skip=0&limit=20\n",
+					"protocol": "GET http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"inventory_mangement",
+						"inventory",
+						"batches"
+					],
+					"query": [
+						{
+							"key": "product_id",
+							"value": "PROD_101"
+						},
+						{
+							"key": "hub_id",
+							"value": "HUB_002"
+						},
+						{
+							"key": "status",
+							"value": "active"
+						},
+						{
+							"key": "skip",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "20\n"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list_products",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/inventory_mangement/inventory/products?hub_id=HUB_002",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"inventory_mangement",
+						"inventory",
+						"products"
+					],
+					"query": [
+						{
+							"key": "hub_id",
+							"value": "HUB_002"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Product_Summary",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "register_driver",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"K Ram GOpal\",\r\n  \"license_number\": \"DL-123457\",\r\n  \"age\": 25,\r\n  \"hub_id\": \"HUB_002\",\r\n  \"status\": \"active\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/driver_mangement/drivers/register_driver\n",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"driver_mangement",
+						"drivers",
+						"register_driver\n"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get_driver_by_id",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"driver_id\" : \"9c5b7cfb-1325-4368-842d-cca585b7f470\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/driver_mangement/drivers/get_driver_by_id\n",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"driver_mangement",
+						"drivers",
+						"get_driver_by_id\n"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "search_driver",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \r\n\"name \":\"John pal\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/driver_mangement/drivers/search_driver",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"driver_mangement",
+						"drivers",
+						"search_driver"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update_driver",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"driver_id\" : \"9c5b7cfb-1325-4368-842d-cca585b7f470\",\r\n  \"age\": 40,\r\n  \"address\": \"123 Main Street\",\r\n  \"salary\": 28000\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/driver_mangement/drivers/update_driver",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"driver_mangement",
+						"drivers",
+						"update_driver"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "retire_audit",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": ""
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/driver_mangement/drivers/delete_driver",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"driver_mangement",
+						"drivers",
+						"delete_driver"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "register_vehicle",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Vehicle_ID\":\"V002\",\r\n    \"Vehicle_Number\":\"AP-01-7941\",\r\n    \"Capacity\": 32,\r\n    \"Status\":\"Available\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/vehicle_mangement/vehicles/register_vehicle",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehicle_mangement",
+						"vehicles",
+						"register_vehicle"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update_vehicle",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Vehicle_ID\":\"V002\",\r\n    \"Status\":\"Under-Maintenance\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/vehicle_mangement/vehicles/update_vehicle",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehicle_mangement",
+						"vehicles",
+						"update_vehicle"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete_vehicle",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": ""
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "search_vehicle",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"Vehicle_ID\":\"V002\",\r\n    \"Vehicle_Number\":\"AP-01-7941\",\r\n    \"Capacity\": 32,\r\n    \"Status\":\"Available\"\r\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/vehicle_mangement/vehicles/search_vehicle?Status=Available",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehicle_mangement",
+						"vehicles",
+						"search_vehicle"
+					],
+					"query": [
+						{
+							"key": "Status",
+							"value": "Available"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Dispatch_Vehicle",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/vehicle_mangement/vehicles/dispatch_vehicle",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehicle_mangement",
+						"vehicles",
+						"dispatch_vehicle"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DispatchstockReceive",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n\"dispatch_id\" :\"disp-8802e9e486954a299de6ae120206821a\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/vehicle_inventory/mark_dispatch_received",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehicle_inventory",
+						"mark_dispatch_received"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

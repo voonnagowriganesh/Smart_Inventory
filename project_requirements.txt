@@ -1,0 +1,97 @@
+Smart-Inventory & Dispatch Manager Project Description
+🔹 Overview
+ 
+Smart-Inventory & Dispatch Manager is a complete solution for managing stock, vehicles and driver allocations with route planning.
+The system helps businesses efficiently track inventory, manage deliveries, and optimize operations without 
+requiring credit card/debit card APIs. It leverages open-source tools (like OpenStreetMap & OSRM) for route mapping.
+ 
+🔹 Core Features
+ 
+1) Inventory Management : 
+ 
+   a) Add, update,delete  and search stock items.
+ 
+   b) Maintain Dispatched stock to desitnation Hub . 
+ 
+   c) Low stock alerts/notifications
+ 
+   d) Maintain purchase( When adding Items ) and sales records(Dispatched item from source Hub).
+ 
+2) Vehicle Management : 
+ 
+   a) Register vehicles with details (number, type, capacity).
+ 
+   b) Track availability status (Available / Allocated / Under Maintenance).
+ 
+   c) Assign vehicles to delivery routes.
+ 
+3) Driver Management :
+ 
+   a) Register drivers with details (name, license, contact , age (if age>50 dont allow to Register, salary).
+ 
+   b) Track driver availability.
+ 
+   c) Allocate drivers to vehicles for deliveries.
+
+   d) Alert if any driver age is greater than 50 than update the status field = Reteried.
+
+4) Hub  :
+   
+   a) Register Hub with details ( Hub_ID, Hub_name , Hub_Manger , Hub_phone no , Hub _ address ). (CRUD operations )
+
+   b) Maintain Hub status whether it is Active / InActive .
+ 
+5) Route Management (No Paid APIs) : 
+ 
+  a) Use OpenStreetMap (OSM) + OSRM / Leaflet.js for route planning.
+ 
+  b) Plan delivery routes with pickup(Dispatched Hub) and desitnation Hub.
+ 
+  c) Estimate travel time and distance.
+ 
+No login or payment required — fully open source.
+
+Future Enchancments : Register, login (admin based  and user based).
+ 
+
+ 
+🔹 Development Levels
+Level 1 – Basic Development
+
+ a) Build Hub module (add/update/delete/search).
+ 
+ b) Build inventory module (add/update/delete/search items).
+ 
+ c)Enable low stock alert notifications.
+ 
+ d) Implement simple vehicle and driver registration.
+ 
+ e) Basic allocation of driver → vehicle → route (Destination Hub)
+ 
+Level 2 – Intermediate Development
+ 
+ a) Integrate OpenStreetMap with Leaflet.js for map visualization.
+ 
+ b) Add OSRM for route optimization.
+ 
+ c) Generate stock and vehicle reports.
+ 
+ d) Notification system for stock, vehicle availability, and driver assignment.
+ 
+Level 3 – Advanced Development (Future Enhancements)
+ 
+ a) Real-time tracking of vehicles (using GPS integration if available).
+ 
+ b) Predictive stock management (using machine learning for demand forecasting).
+ 
+ c) Advanced analytics dashboard with charts and insights.
+ 
+ d) Multi-user roles (Admin, Inventory Manager, Driver).
+ 
+✅ This way, your Smart-Inventory system grows step by step:
+ 
+Start simple with stock + vehicle + driver.
+ 
+Then integrate routing with free/open tools.
+ 
+Finally, add AI, reports, and real-time features.

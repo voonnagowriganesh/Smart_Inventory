@@ -1,0 +1,808 @@
+Database : 
+ 
+    MongoDB (Async → Motor)
+    
+    Collections:
+    
+    Hubs (Active & Deactive hubs)
+    
+    ClosedHubs (when hub deleted/moved)
+
+1) Hub Management Endpoints
+    a) Hub Register : 
+    
+        Method: POST
+        Request Body:
+        
+            {
+            "hub_id": "string",       // unique
+            "hub_name": "string",
+            "hub_manager": "string",
+            "hub_phone_number": "string",
+            "hub_address": "string"
+            }
+        
+        
+        Conditions:
+        
+        hub_id and hub_name must be unique → raise custom exception if duplicate.
+        
+        One hub_manager can only be assigned to one hub.
+        
+        Add internally:
+        
+        status: "Active" (default on registration)
+        
+        hub_opening_date: current date
+        
+        Response:
+        
+            {
+            "message": "Hub created successfully",
+            "hub_id": "string",
+            "hub_name": "string"
+            }
+    
+    b) Hub Details Update
+    
+        Method: PUT
+        Request Body:
+        
+            {
+            "hub_id": "string",   // required to identify record (not editable)
+            "hub_name": "string (optional)",
+            "hub_manager": "string (optional)",
+            "hub_phone_number": "string (optional)",
+            "hub_address": "string (optional)",
+            "status": "Active/Deactive (optional)"
+            }
+            
+        
+        Conditions:
+        
+        At least one field (other than hub_id) must be provided → else raise exception.
+        
+        status must be either Active or Deactive.
+        
+        Response:
+        
+            {
+            "message": "Hub details updated successfully",
+            "hub_id": "string"
+            }
+    
+    c) Delete Hub
+    
+    Method: DELETE
+    Request Body:
+    
+        {
+        "hub_id": "string",
+        "hub_name": "string",
+        "hub_manager": "string"
+        }
+    
+    
+    Conditions:
+    
+    Move the record into ClosedHubs collection.
+    
+    Add internally:
+    
+    hub_closed_date: current date
+    
+    no_of_days_active: difference between hub_opening_date and hub_closed_date.
+    
+    Response:
+    
+        {
+        "message": "Hub deleted successfully",
+        "hub_id": "string",
+        "hub_name": "string"
+        }
+    
+    d) Search Hub
+    
+        Endpoints:
+        
+        Search Running Hub (Active/Deactive)
+        Method: GET
+        Request Params:
+        
+            hub_id (optional)
+            hub_name (optional)
+        
+        
+        Response: → Hub details from Hubs collection.
+        
+        View Closed Hubs
+            Method: GET
+            Response: → All hubs from ClosedHubs collection.
+        
+        View Active/Deactive Hubs
+            Method: GET
+            Query Param:
+            
+            status=Active OR status=Deactive
+        
+        
+            Response: → List of hubs matching status.
+
+2) Inventory Management Endpoints :
+    Collections / Concepts (MongoDB)
+        - InventoryProducts      : product master (one document per Product_ID)
+        - InventoryBatches       : batch records for stock (one per Product_ID + Batch_No)
+        - StockTransactions      : logs for every stock IN/OUT (purchase, update, dispatch, delete)
+        - Dispatches             : records of dispatch orders (vehicle/driver assigned later)
+        - Categories             : optional lookup collection for valid categories
+        - Brands                 : optional lookup collection for valid brands
+    
+    Index recommendations (create once at DB):
+        - InventoryProducts: unique index on { Product_ID:1 }, unique on { Product_Name:1, Hub_ID:1 } if required
+        - InventoryBatches: compound index on { Product_ID:1, Hub_ID:1, Expiry_Date:1 } and unique index on { Product_ID:1, Hub_ID:1, Batch_No:1 }
+        - StockTransactions: index on { Product_ID:1, Hub_ID:1, Timestamp: -1 }
+        - Dispatches: index on { Status:1, Timestamp: -1 }
+        - Categories / Brands: unique name indexes
+    
+    ------------------------------
+    1) Register Inventory (Add product master + initial batch) :
+        @router.post("/inventory/register")
+        Request Body:
+            {
+            "Hub_ID": "string",                 // must exist in Hubs collection
+            "Product_ID": "string",             // unique product identifier (SKU)
+            "Product_Name": "string",
+            "Quantity": int,                    // > 0 — quantity for this batch
+            "Value": float,                     // total purchase value for this batch (currency)
+            "Selling_Price": float,             // per unit sell price
+            "Product_Description": "string (optional)",
+            "Expiry_Date": "YYYY-MM-DD",        // batch expiry
+            "Brand": "string",
+            "Batch_No": "string (optional)"     // if not provided, system generates (e.g., PRODID-BATCH-<timestamp>)
+            }
+        
+        Behavior / Conditions:
+            - Validate Hub_ID exists → else raise custom exception (400 / 404).
+            - Product_ID must be unique at product-master level; if Product_ID not present in InventoryProducts → create a new product master doc.
+            - Quantity must be > 0 → else raise custom exception (400).
+            - If Expiry_Date is within 30 days from today → include "warning" in response.
+            - Create a new InventoryBatches entry for this Hub_ID + Product_ID + Batch_No (do NOT overwrite existing batches).
+            - Insert a StockTransactions record of type "IN" linking to this batch with purchase value and per-unit price (Value / Quantity).
+            - Return 201 with hub and product info + optional warning.
+        
+        Response (201):
+            {
+            "message": "Product batch added successfully",
+            "Hub_ID": "string",
+            "Hub_Name": "string",
+            "Product_ID": "string",
+            "Batch_No": "string",
+            "Quantity_Added": int,
+            "warning": "Product will expire within one month" // optional
+            }
+        
+        Errors:
+            - 400: Invalid input (Hub not found, Quantity <= 0, invalid date format)
+            - 409: Duplicate Product_ID (if inserting master and ID exists)
+            - 500: Internal server error
+        
+    ------------------------------
+    2) Update Inventory (Add stock to product — creates/merges batch) : 
+        @router.put("/inventory/update")
+        Request Body:
+            {
+            "Hub_ID": "string",
+            "Product_ID": "string",
+            "Product_Name": "string (optional)",      // optional master update
+            "Quantity": int,                           // new quantity to add (>=1)
+            "Value": float,                            // purchase total for this added stock
+            "Selling_Price": float (optional),
+            "Category": "string (optional)",
+            "Product_Description": "string (optional)",
+            "Expiry_Date": "YYYY-MM-DD",               // expiry for the new stock
+            "Brand": "string (optional)",
+            "Batch_No": "string (optional)"            // if matches existing batch -> merge, else create new batch
+            }
+        
+        Behavior / Conditions:
+        - Must validate Hub_ID exists and Product_ID exists in master; else raise 404 / custom.
+        - Quantity must be > 0.
+        - Locate InventoryBatches for given Product_ID + Hub_ID:
+            - If Batch_No provided:
+                - If batch exists → merge quantities: batch.Quantity += Quantity; update batch.PurchaseValue += Value; update batch.LastUpdated
+                - If not exists → create new batch document with provided Batch_No.
+            - If Batch_No not provided:
+                - Try to find a batch with the **same Expiry_Date**:
+                    - If found → merge into that batch (safe).
+                    - Else → create a new batch with generated Batch_No.
+        - Maintain batch-level `Purchase_Value` and `Purchase_Unit_Price`: keep history (append StockTransactions).
+        - Do NOT overwrite older batch expiry dates.
+        - Update InventoryProducts master if Product_Name / Category / Brand / Selling_Price provided.
+        - If Expiry_Date < 30 days → return a warning in response.
+        - Maintain a StockTransactions record of type "IN" with reference to batch and purchased value.
+        - Return 200 with merged / created batch info.
+        
+        Response (200):
+            {
+            "Product_ID": "string",
+            "Batch_No": "string",
+            "message": "Product updated successfully in Hub_Name",
+            "Merged": true|false,
+            "NewBatchCreated": true|false,
+            "NewQuantityTotalInBatch": int,
+            "warning": "Product will expire within one month" // optional
+            }
+        
+        Errors:
+        - 400: Invalid input (Quantity <= 0, invalid date)
+        - 404: Hub or Product not found
+        - 500: Internal server error
+        
+    ------------------------------
+    3) Delete Inventory (soft-archive batch or product) :
+        NOTE: Prefer soft-delete to preserve audit trail. Provide both batch-level and product-level deletion.
+        
+        a) Delete Batch : 
+            @router.delete("/inventory/batch/delete")
+            Request Body (or Query):
+                {
+                "Hub_ID": "string",
+                "Product_ID": "string",
+                "Batch_No": "string"
+                }
+            Behavior:
+            - Validate existence of batch; if not found → raise 404.
+            - If batch.Quantity > 0 → block deletion unless "force=true" is passed. Recommend requiring a reason for force delete.
+            - Move batch doc to ArchivedBatches collection or set batch.status = "archived" and add archive metadata (archived_by, archived_at, reason).
+            - Add StockTransactions record of type "ARCHIVE/DELETE".
+            Response:
+                { "message": "Batch archived successfully", "Product_ID": "...", "Batch_No": "..." }
+        
+        b) Delete Product (master)
+            @router.delete("/inventory/product/delete")
+            Request Body:
+                {
+                "Hub_ID": "string",
+                "Product_ID": "string"
+                }
+            Behavior:
+            - Ensure all batches are archived/deleted or confirm force deletion.
+            - Move master to ArchivedProducts collection (soft delete). Preserve all batches as archived too.
+            Response:
+                { "message": "Product archived successfully", "Product_ID": "..." }
+            
+            Errors:
+            - 400: Cannot delete active batches without force/reason
+            - 404: Not found
+            - 500: Internal server error
+        
+    ------------------------------
+    4) Dispatch Inventory Stock (consume stock, create dispatch record) :
+        @router.post("/inventory/dispatch")
+        Request Body:
+            {
+            "Product_ID": "string",
+            "Product_Name": "string (optional)",
+            "Quantity": int,
+            "From_Hub_ID": "string",                 // source hub
+            "To_Hub_ID": "string",                   // destination hub
+            "Dispatching_Hub_Name": "string (optional)",
+            "Request_Ref": "string (optional)"       // external order id
+            }
+        
+        Behavior / Conditions:
+        - Validate both From_Hub_ID and To_Hub_ID exist.
+        - Validate Product_ID exists in InventoryProducts for From_Hub_ID.
+        - Determine total available stock across batches for (Product_ID, From_Hub_ID).
+        - If Quantity > AvailableStock → raise custom exception (400/409).
+        - Consume batches using **FIFO** by Expiry_Date (oldest expiry first). Implementation detail:
+            - Query InventoryBatches for Product_ID+From_Hub_ID sorted by Expiry_Date ascending, then by created_at ascending.
+            - Iterate batches: deduct from batch.Quantity until requested Quantity satisfied.
+            - For each batch consumed, create a StockTransactions record of type "OUT" linking Product_ID, Batch_No, QuantityConsumed, UnitCost (from batch), Timestamp.
+        - After consumption:
+            - Update/modify batch.Quantity (may become zero).
+            - If batch.Quantity becomes zero → optionally mark batch.status = "depleted".
+        - Create an entry inside Dispatches collection:
+        {
+            "dispatch_id": "string (uuid)",
+            "Product_ID": "...",
+            "Quantity": int,
+            "From_Hub_ID": "...",
+            "To_Hub_ID": "...",
+            "Batch_Consumption": [ { "Batch_No": "...", "Qty": int, "Unit_Cost": float } ],
+            "Vehicle_Assigned": "In-Progress" | null,
+            "Driver_Assigned": "In-Progress" | null,
+            "Timestamp": auto,
+            "Status": "In-Progress" | "In-Transit" | "Completed" | "Cancelled"
+        }
+        - Return 201 with dispatch details and remaining quantity at From_Hub.
+        
+        Response (201):
+            {
+            "message": "Product dispatched successfully",
+            "dispatch_id": "string",
+            "Product_ID": "string",
+            "From_Hub": "string",
+            "To_Hub": "string",
+            "Quantity_Dispatched": int,
+            "Remaining_Quantity": int
+            }
+        
+        Errors:
+        - 400/409: Quantity > available stock
+        - 404: Product or hubs not found
+        - 500: Internal server error
+    
+    ------------------------------
+    5) Search Inventory : 
+        @router.get("/inventory/search")
+        Query Params (any optional; at least one of Product_ID or Product_Name recommended):
+            {
+            "Product_ID": "string (optional)",
+            "Product_Name": "string (optional)",
+            "Hub_ID": "string (optional)",
+            "Category": "string (optional)",
+            "Brand": "string (optional)",
+            "skip": int (optional),
+            "limit": int (optional)
+            }
+        
+        Behavior:
+        - If neither Product_ID nor Product_Name nor Hub_ID provided → either return paginated full inventory or raise validation error (choose behavior).
+        - Return product-level view with aggregated quantity (sum over batches) and key meta:
+        [
+            {
+            "Product_ID": "...",
+            "Product_Name": "...",
+            "Hub_ID": "...",
+            "Total_Quantity": int,
+            "Category": "...",
+            "Brand": "...",
+            "Nearest_Expiry": "YYYY-MM-DD",   // earliest expiry among batches
+            "Batches_Count": int
+            }
+        ]
+        
+        Errors:
+        - 404 if nothing matched (optional)
+        - 400 invalid params
+    
+    ------------------------------
+    6) View Batches for a Product in a Hub : 
+        @router.get("/inventory/{Hub_ID}/{Product_ID}/batches")
+        Path Params:
+        - Hub_ID
+        - Product_ID
+        Query Params: sort_by(expiry|qty), skip, limit
+        
+        Response:
+        [
+        {
+            "Batch_No": "string",
+            "Quantity": int,
+            "Expiry_Date": "YYYY-MM-DD",
+            "Purchase_Value": float,
+            "Purchase_Unit_Price": float,
+            "Created_At": "datetime",
+            "Status": "active|depleted|archived"
+        }
+        ]
+        
+        Errors:
+        - 404 if product/hub not found
+    
+    ------------------------------
+    7) Low Stock Alerts (on-request) :
+        @router.get("/inventory/low-stock")
+        Query Params:
+        - Hub_ID: optional
+        - threshold: int (default 10)
+        Behavior:
+        - Aggregate InventoryBatches or InventoryProducts to compute total per product per hub and return items where total <= threshold.
+        - Can also trigger push notifications if configured.
+        
+        Response:
+            { "items": [ { "Product_ID": "...", "Product_Name": "...", "Total_Quantity": int, "Hub_ID": "..." } ] }
+    
+    ------------------------------
+    8) Expiry Alerts (on-register/on-update + scheduled) :
+    Notes:
+    - On register/update, if batch.expiry within 30 days -> return warning field.
+    - Add a scheduled job (daily) that:
+        - Scans InventoryBatches where Expiry_Date <= today + 30 days -> mark as "expiring_soon" and create alerts list.
+        - Optionally auto-write-off batches expired (Expiry_Date < today) or move to ExpiredBatches.
+    - API for retrievi
+    @router.get("/inventory/expiring")
+    Query Params: days=30 default
+    Response: list of batches expiring within days
+    
+    ------------------------------
+    9) Stock Transactions log (audit) : 
+    Every stock IN/OUT/ARCHIVE/ADJUSTMENT must create a StockTransactions document:
+        {
+        "transaction_id": "string",
+        "type": "IN|OUT|ADJUSTMENT|ARCHIVE",
+        "Product_ID": "string",
+        "Hub_ID": "string",
+        "Batch_No": "string (optional)",
+        "Quantity": int,
+        "Unit_Price": float (optional),
+        "Total_Value": float (optional),
+        "reference": "string (purchase order or dispatch id)",
+        "timestamp": "datetime",
+        "remarks": "string"
+        }
+    Endpoint:
+    @router.get("/inventory/transactions")
+    Query: Product_ID, Hub_ID, from_date, to_date, skip, limit
+    
+    ------------------------------
+    10) Reports (aggregated)
+        - Stock summary per hub
+        @router.get("/inventory/report/summary")
+        Query: Hub_ID optional
+        Response: totals, low-stock counts, nearest-expiry count
+        
+        - Movement report
+        @router.get("/inventory/report/movement")
+        Query: Product_ID, Hub_ID, from_date, to_date
+        
+    ------------------------------
+    Operational Rules & Important Notes (no code — architecture/security)
+    - Always use **batch-wise records** for stock tracking. Never overwrite expiry or merge batches unless expiry matches exactly.
+    - FIFO Dispatch rule: consume batches sorted by Expiry_Date ascending, then by created_at ascending.
+    - Use MongoDB transactions (session) for operations that touch multiple collections (consuming batches → inserting dispatch → stock transactions → updating batches). Transactions require a MongoDB replica set. If not available, do careful two-step operations with compensating actions and good logging.
+    - For monetary calculations (Value / Unit Price) keep precision consistent and store currency if multi-currency is needed.
+    - Validate Category and Brand with lookup collections (Categories, Brands) to avoid garbage values (case normalization).
+    - Keep audit trail: StockTransactions must be immutable logs for traceability.
+    - Add unique identifiers for Batch_No (system-generated if not provided): e.g., "{Product_ID}-{Hub_ID}-{YYYYmmddHHMMSS}".
+    - Use timezone-aware datetimes in UTC for all timestamp fields.
+    - Provide clear errors: 400 for validation, 404 for not found, 409 for conflicts (insufficient stock), 500 for server errors.
+    - Concurrency: when multiple dispatches may consume same batches concurrently, use optimistic checks (update_one with matching quantity) or transactions to prevent race conditions.
+    
+    ------------------------------
+    Sample minimal flow (Register -> Update -> Dispatch) (for developer)
+    1) POST /inventory/register
+    - create product master (if not exists) and create batch doc with quantity 100
+    - insert StockTransactions IN referencing batch
+    
+    2) PUT /inventory/update
+    - caller adds 50 units with expiry X
+    - system finds batch with same expiry -> merge quantity (or creates new batch)
+    - insert StockTransactions IN
+    
+    3) POST /inventory/dispatch
+    - request to dispatch 120 units
+    - system finds batches sorted by expiry:
+        Batch A qty=80 (expiry earliest)
+        Batch B qty=100
+        Consume A: 80 -> create StockTransactions OUT for Batch A qty=80
+        Consume B: 40 -> create StockTransactions OUT for Batch B qty=40
+    - update batch quantities, create Dispatches doc, return remaining totals
+    
+    ------------------------------
+    Validation rules summary (must implement)
+    - Hub_ID must exist
+    - Product_ID must be provided and unique in master
+    - Quantity for IN must be > 0
+    - Dispatch quantity must be <= total available (sum batches)
+    - Expiry_Date must be valid date string (YYYY-MM-DD)
+    - Category and Brand must be validated/normalized (Title Case)
+    - Batch_No unique per Product_ID + Hub_ID
+    - Return warnings if expiry within 30 days
+    - Use UTC timezone for timestamps
+    
+
+3) Vehcile Management Endpoint : (use vehicle db)
+    a) Add Vehicle (POST) : 
+    
+        Request
+        
+            {
+            "Vehicle_ID": "V001",
+            "Vehicle_Number": "AP-01-1234",
+            "Capacity": 5000,
+            "Status": "Available"
+            }
+        
+        
+        Conditions : 
+        
+            1) Vehicle_ID and Vehicle_Number must be unique.
+        
+            2) If duplicate found → raise custom exception.
+        
+        Response : 
+        
+            {
+            "status": "success",
+            "message": "Vehicle registered successfully"
+            }
+    
+    b) Update Vehicle (PUT)
+    
+        Request
+        
+        {
+        "Vehicle_ID": "V001",
+        "Vehicle_Number": Vehicle_Number (optional)
+        "Status": "In-Transit"
+        }
+        
+        
+        Conditions : 
+        
+            1) Vehicle_ID must exist.
+            
+            2) Status allowed values → Available / Unavailable / In-Transit / Under-Maintenance.
+        
+        Response : 
+        
+            {
+            "status": "success",
+            "message": "Vehicle status updated"
+            }
+    
+    c) Delete Vehicle (DELETE)
+    
+        Request
+        
+            {
+            "Vehicle_ID": "V001",
+            "Vehicle_Number": "AP-01-1234"
+            }
+        
+        
+        Conditions : 
+        
+            1) Both Vehicle_ID and Vehicle_Number must match existing record.
+            
+            2) If not found → raise exception.
+            
+            3) Instead of permanent delete → move record to ClosedVehicles collection with field Closed_Date.
+        
+        Response
+        
+            {
+            "message": "Vehicle AP-01-1234 deleted successfully"
+            }
+    
+    d) Search Vehicle (GET) : 
+    
+        Request (all optional) :
+            
+            {
+            "Vehicle_ID": "V001",
+            "Vehicle_Number": "AP-01-1234",
+            "Status": "Available"
+            }
+        
+        
+        Conditions : 
+        
+            1) At least one field (Vehicle_ID / Vehicle_Number / Status) must be provided.
+            
+            2) If none given → raise exception "No search criteria provided".
+        
+        Response (example) : 
+        
+            {
+            "Available_Vehicles": [
+                { "Vehicle_ID": "V001", "Vehicle_Number": "AP-01-1234", "Capacity": 5000, "Status": "Available" },
+                { "Vehicle_ID": "V002", "Vehicle_Number": "AP-01-5678", "Capacity": 3000, "Status": "Available" }
+            ]
+            }
+    
+    e) Dispatch Vehicle (GET → allocation logic)
+    
+        Logic Flow
+        
+        Fetch records from Dispatch DB with status = "In-Progress".
+        
+        If found →
+        
+        Find one Available Driver from Driver DB.
+        
+        Find one Available Vehicle from Vehicle DB.
+        
+        If both exist → allocate them.
+        
+        Update Vehicle DB → Status = "In-Transit".
+        
+        Update Driver DB → Status = "Assigned".
+        
+        Update Dispatch DB → Status = "In-Transit", and attach Vehicle_ID + Driver_ID.
+        
+        If driver or vehicle not available → return
+        
+        { "message": "Load is available for Dispatch but no driver or vehicle available" }
+        
+        
+        If no "In-Progress" records or all are already "In-Transit" → return
+        
+        { "message": "No need to dispatch vehicle" }
+
+
+4) Driver Management Endpoint :
+    Collections
+    
+    Drivers (active records)
+    
+    RetiredDrivers (update statud field as retired or force-retired when driver crosses retirement rule or is force-retired)
+    
+    
+    Fixed Enums
+    
+    Driver Status: Available, Assigned, On-Leave, Inactive, Retired
+    
+    Assignment Status: In-Progress, In-Transit, Completed, Cancelled
+    
+    a) Add Driver (POST) :
+    
+        Request:
+        {
+            "name" : "string",
+            "age": "int",                    // must be <= 50 at registration
+            "license_number":"str",          // unique
+            "hub_id": "str",                 // optional; validate if provided
+            "status": Literal["active", "retired", "deleted"] = "active",
+            "retirement_reason": Optional[str] = None
+        }
+        
+        
+        Conditions
+        
+        License_No must be unique → custom exception on duplicates.
+        
+        Age > 50 → reject registration with custom exception.
+        
+        If Hub_ID provided, it must exist in Hubs.
+        
+        Set internally on insert:
+        
+        Status = "Available"
+        
+        Registered_At = current timestamp
+        
+        Response (201)
+        
+        {
+        "status": "success",
+        "message": "Driver registered successfully",
+        "Driver_ID": "string",
+        "Driver_Name": "string"
+        }
+    
+    b) Update Driver (PUT) : 
+    
+        Request
+        
+            {
+            "Driver_ID": "string",                 // required to locate record (not editable)
+            "Driver_Name": "string (optional)",
+            "Age": 35,                             // optional; if >50 => retirement flow
+            "License_No": "string (optional)",     // if changed, must remain unique
+            "Contact_Number": "string (optional)",
+            "Address": "string (optional)",
+            "Salary": 26000,
+            "Status": "Available/Assigned/On-Leave/Inactive (optional)",
+            "Hub_ID": "string (optional)"
+            }
+        
+        
+        Conditions : 
+        
+        - At least one field (other than Driver_ID) must be provided → else raise exception.
+        
+        - If Age updated to > 50 → move record to RetiredDrivers, remove from Drivers, set Retired_At = now and return retirement response.
+        
+        - Status = "Assigned" cannot be set manually; it’s controlled by assignment endpoints. If attempted → custom exception.
+        
+        - License_Valid_Till must be >= today.
+        
+        Response (200) – normal update
+        
+            {
+            "status": "success",
+            "message": "Driver details updated successfully",
+            "Driver_ID": "string"
+            }
+        
+        
+        Response (200) – moved to retirement
+        
+            {
+            "status": "success",
+            "message": "Driver moved to retirement database due to age > 50",
+            "Driver_ID": "string"
+            }
+        
+    c) Delete Driver (DELETE) :
+    
+        Request
+        
+            {
+            "Driver_ID": "string",
+            "Driver_Name": "string"
+            }
+        
+        
+        Conditions :
+        
+        - Driver must exist; names must match.
+        
+        - If driver Status = "Assigned" with an active Assignment (status In-Progress/In-Transit) → block delete (custom exception).
+        
+        - Perform soft delete: move to RetiredDrivers with Reason = "Deleted", Closed_At = now.
+        
+        Response (200)
+        
+            {
+            "message": "Driver Driver_Name deleted and archived successfully",
+            "Driver_ID": "string"
+            }
+        
+    d) Search Driver (GET) : 
+    
+        Request (all optional, but at least one required)
+        
+        {
+        "Driver_ID": "string (optional)",
+        "Driver_Name": "string (optional)",
+        "License_No": "string (optional)",
+        "Status": "Available/Assigned/On-Leave/Inactive/Retired (optional)",
+        "Hub_ID": "string (optional)"
+        }
+        
+        
+        Conditions : 
+        
+        - If no filter provided → raise exception “No search criteria provided”.
+        
+        Response (200)
+        
+        {
+        "Drivers": [
+            {
+            "Driver_ID": "string",
+            "Driver_Name": "string",
+            "Age": 34,
+            "License_No": "string",
+            "License_Valid_Till": "YYYY-MM-DD",
+            "Contact_Number": "string",
+            "Status": "Available",
+            "Hub_ID": "string"
+            }
+        ]
+        }
+        
+
+    
+    h) Retirement Audit (POST) (utility endpoint)
+    
+        Purpose: Periodically move any driver with Age > 50 (or detected via internal rule) to RetiredDrivers.
+        
+        Request : 
+        
+        {
+        "Confirm": true
+        }
+        
+        
+        Action : 
+        
+        - For each driver in Drivers where Age > 50 and Status != "Assigned":
+        
+        - Move to RetiredDrivers with Retired_At = now, Reason = "Age > 50".
+        
+        - Remove from Drivers.
+        
+        Response (200)
+        
+        {
+        "status": "success",
+        "moved_count": 3
+        }
+
+
+    

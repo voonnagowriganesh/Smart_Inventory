@@ -1,0 +1,81 @@
+smart-inventory/
+│
+├── main.py  
+│   # Entry point of the FastAPI application.  
+│   # Imports app from app/ and runs the server.  
+│
+├── project_requirements.txt  
+│   # List of all required Python packages (FastAPI, Uvicorn, Pydantic, Motor, etc.).  
+│
+├── endpoints.txt  
+│   # Contains the list of all endpoints to be implemented.  
+│   # Only used as documentation/reference (not executed).  
+│
+├── app/  
+│   ├── __init__.py  
+│   # Marks this directory as a Python package.  
+│
+│   ├── utils/  
+│ │ ├── logger.py  
+│   │   │   # Custom logging setup (formatters, log levels, log file handlers).  
+│   │   │
+│ │ ├── decorators.py  
+│   │   │   # Common decorators (authentication, request validation, etc.).  
+│   │   │
+│ │ └── custom_helpers.py  
+│   │       # Any reusable helper functions for the project.  
+│   │
+│   ├── models/  
+│ │ ├── inventory.py  
+│   │   │   # Pydantic models + MongoDB schema for inventory items.  
+│   │   │
+│ │ ├── hub.py  
+│   │   │   # Pydantic models + MongoDB schema for hubs.  
+│   │   │
+│ │ ├── driver.py  
+│   │   │   # Pydantic models + MongoDB schema for drivers.  
+│   │   │
+│ │ ├── vehicle.py  
+│   │       # Pydantic models + MongoDB schema for vehicles.  
+│   │
+│   ├── db/  
+│ │ ├── mongodb.py  
+│   │       # MongoDB connection setup (Motor client).  
+│   │   
+│ │ |  
+│   │
+│   ├── core/  
+│ │ ├── config.py  
+│   │   │   # Central configuration (DB URLs, service URLs, env vars, etc.).  
+│   │   │
+│ │ | 
+│   │
+│   ├── endpoints/  
+│ │ ├── inventory_endpoints.py  
+│   │   │   # Defines API routes for inventory management (using APIRouter).  
+│   │   │
+│ │ ├── hub_endpoints.py  
+│   │   │   # Defines API routes for hub management.  
+│   │   │
+│ │ ├── driver_endpoints.py  
+│   │   │   # Defines API routes for driver management.  
+│   │   │
+│ │ └── vehicle_endpoints.py  
+│   │       # Defines API routes for vehicle management.  
+│   │── vehicle_inventory_endpoints.py
+|   |       $ Defines API route for vehicle_inventory management.
+| | |
+│   └── services/  
+│ ├── inventory_service.py  
+│       │   # Business logic for inventory (called from endpoints).  
+│       │
+│ ├── hub_service.py  
+│       │   # Business logic for hubs.  
+│       │
+│ ├── driver_service.py  
+│       │   # Business logic for drivers.  
+│       │
+│ └── vehicle_service.py  
+│           # Business logic for vehicles.
+| └── vehicle_inventory_service.py 
+            # Business logic for Dispatched stock Receive.
